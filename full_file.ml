@@ -21,11 +21,14 @@ let assign_var (b : bool) (v : var) : var =
   | Unassn x -> Assn (x,b)
   | _ -> v
 
+(*false positive*)
 let rec clause_sat (c : clause) : bool =
   match c with
   | Empty -> true
   | Cons (h,t) ->
-    if get_value h then true else clause_sat t
+    (match h with
+    | Assn (_,true) -> true
+    | _ -> clause_sat t)
 
 let is_unit (c : clause) : bool =
   true
