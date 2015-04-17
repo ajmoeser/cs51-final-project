@@ -1,5 +1,5 @@
 (* This will be the interface and implementation of clauses *)
-open Vars2 
+open Vars
 
 module type CLAUSE =
   sig
@@ -19,15 +19,21 @@ module type CLAUSE =
 module Clauses : CLAUSE =
   struct
  
-
-    type var = Vars2.var  
+    type var = Vars.var  
     type clause = Empty | Cons of var * clause
 
     let rec clause_sat (c : clause) : bool =
       match c with
-      | Empty -> true
+      | Empty -> false
       | Cons (h,t) ->
-        if Vars2.get_value h then true else clause_sat t
+        if Vars.get_value h then true else clause_sat t
+
+    let is_single (c : clause) : bool =
+      match c with
+      | Cons (v,Empty) -> true
+      | _ -> false
+
+(* NOT YET IMPLEMENTED
 
     let is_unit (c : clause) : bool =
       true
@@ -38,15 +44,10 @@ module Clauses : CLAUSE =
     let unit_rule (c : clause) : clause =
       c
 
-    let is_single (c : clause) : bool =
-      match c with
-      | Cons (v,Empty) -> true
-      | _ -> false
-
     let elim_mult_vars (c : clause) : clause =
       c
 
     let elim_taut (c : clause) : clause =
       c    
-
+*)
 end
