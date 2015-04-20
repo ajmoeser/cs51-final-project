@@ -1,8 +1,8 @@
 type var_name = Pos of bytes | Neg of bytes
 
 type var = Unassn of var_name | Assn of var_name * bool
-type clause = EmptyC | Conj of var * clause
-type formula = EmptyF | Cons of clause * formula
+type clause = EmptyC | Disj of var * clause
+type formula = EmptyF | Conj of clause * formula
 
 let is_assigned (v : var) : bool =
   match v with
@@ -25,7 +25,7 @@ let assign_var (b : bool) (v : var) : var =
 let rec clause_sat (c : clause) : bool =
   match c with
   | EmptyC -> false
-  | Conj (h,t) ->
+  | Disj (h,t) ->
     (match h with
     | Assn (_,true) -> true
     | _ -> clause_sat t)
@@ -41,7 +41,7 @@ let unit_rule (c : clause) : clause =
 
 let is_single (c : clause) : bool =
   match c with
-  | Conj (v,EmptyC) -> true
+  | Disj (v,EmptyC) -> true
   | _ -> false
 
 let elim_mult_vars (c : clause) : clause =

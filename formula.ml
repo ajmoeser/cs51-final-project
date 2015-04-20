@@ -18,7 +18,7 @@ module type FORMULA =
 module Form : FORMULA =
   struct
 
-    type formula = EmptyF | Cons of clause * formula
+    type formula = EmptyF | Conj of clause * formula
 
     let empty () :  formula =
       EmptyF

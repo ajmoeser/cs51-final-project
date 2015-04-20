@@ -20,17 +20,17 @@ module Clauses : CLAUSE =
   struct
  
     type var = Vars.var  
-    type clause = Empty | Cons of var * clause
+    type clause = Empty | Disj of var * clause
 
     let rec clause_sat (c : clause) : bool =
       match c with
       | Empty -> false
-      | Cons (h,t) ->
+      | Disj (h,t) ->
         if Vars.get_value h then true else clause_sat t
 
     let is_single (c : clause) : bool =
       match c with
-      | Cons (v,Empty) -> true
+      | Disj (v,Empty) -> true
       | _ -> false
 
 (* NOT YET IMPLEMENTED
