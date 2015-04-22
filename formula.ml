@@ -1,5 +1,5 @@
 (* This will be the implementation and interface of formulas *)
-Open Clauses
+open Clause
 
 module type FORMULA =
   sig
@@ -28,7 +28,7 @@ module Form : FORMULA =
       | EmptyF -> true
       | _ -> false
 
-(* TO BE IMPLEMENTED
+(* TO BE IMPLEMENTED *)
 
     let has_empty (f : formula) : bool =
       true
@@ -41,5 +41,5 @@ module Form : FORMULA =
 
     let apply_resolution (f : formula) : formula =
       f
-*)
+
 end

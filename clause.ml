@@ -1,5 +1,7 @@
 (* This will be the interface and implementation of clauses *)
+
 open Variable
+
 
 module type CLAUSE =
   sig
@@ -26,14 +28,16 @@ module Clauses : CLAUSE =
       match c with
       | Empty -> false
       | Disj (h,t) ->
-        if Vars.get_value h then true else clause_sat t
+	match Vars.get_value h with
+	| Some true -> true
+        | _ -> clause_sat t
 
     let is_single (c : clause) : bool =
       match c with
       | Disj (v,Empty) -> true
       | _ -> false
 
-(* NOT YET IMPLEMENTED
+(* NOT YET IMPLEMENTED *)
 
     let is_unit (c : clause) : bool =
       true
@@ -49,5 +53,5 @@ module Clauses : CLAUSE =
 
     let elim_taut (c : clause) : clause =
       c    
-*)
+
 end
