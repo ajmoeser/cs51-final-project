@@ -1,5 +1,5 @@
 (* This will be the interface and implementation of clauses *)
-open Vars
+open Variable
 
 module type CLAUSE =
   sig
