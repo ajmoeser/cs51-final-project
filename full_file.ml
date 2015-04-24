@@ -1,4 +1,13 @@
-type var_name = Pos of bytes | Neg of bytes
+(* Limiting variables for testing*)
+type var_literal = | A
+		   | B
+		   | C
+		   | D
+		   | E
+
+(* Representing x and not x*)
+type var_name = Pos of var_literal | Neg of var_literal
+
 
 type var = Unassn of var_name | Assn of var_name * bool
 type clause = EmptyC | Disj of var * clause
@@ -21,7 +30,7 @@ let assign_var (b : bool) (v : var) : var =
   | Unassn x -> Assn (x,b)
   | _ -> v (* Haven't decided yet how to handle if already assigned*)
 
-(*generates false positives*)
+
 let rec clause_sat (c : clause) : bool =
   match c with
   | EmptyC -> false
