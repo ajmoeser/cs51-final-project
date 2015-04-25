@@ -6,17 +6,21 @@
  * files contain interfaces and implementations for variables, clauses,
  * and formulas.  See README.md for details.
 *)
+open Core.Std
+
+exception UNSATISFIABLE
 
 (* I need to review how to use the Map module to create
  * a mapping of variables to assignments *) 
 (*type var_map = Map.make (VARIABLE) *)
 
-(* TODO : get initial variable map from formula; all values initially
- * unassigned
-
+(* Gets initial variable map from formula; all values initially
+ * unassigned *)
 let rec get_var_map (f : formula) : var_map =
+  let new = Map.empty in
+  let vs = list_vars f in
+  List.fold_right ~f:(fun x -> Map.add x (Unassn x)) ~init:new vs
 
-*) 
    
 (* core recursive function to determine whether a formula is satisfiable
  * given a particular mapping of variables *)
@@ -29,7 +33,7 @@ let rec sat_search (f : formula) (m : var_map) : var_map =
     | _ ->
       (* If under any assignment, a formula contains any empty clauses, 
        * the formula is unsatisfiable *)
-      if has_empty f_new then failwith "Unsatisfiable"
+      if has_empty f_new then raise UNSATISFIABLE
       (*otherwise, add a new variable to the mapping, and repeat*)
       else sat_search f_new (add_next_variable f_new map_new)
 
