@@ -45,7 +45,7 @@ let get_value (v : var) : bool option =
 let assign_var (b : bool) (v : var) : var =
   match v with
   | Unassn x -> Assn (x,b)
-  | _ -> v (* Haven't decided yet how to handle if already assigned*)
+  | _ -> v
 
 (* If any variable is assigned to be true, clause is satisfied *)
 let rec clause_sat (c : clause) : bool =
