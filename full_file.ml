@@ -18,7 +18,7 @@ type formula = EmptyF | Conj of clause * formula
 let v1 = Assn (Pos (A),true)
 let v2 = Unassn (Pos (B))
 let v3 = Unassn (Neg (B))
-let v4 = Assn (Neg (B),true)
+let v4 = Assn (Neg (B),false)
 let v5 = Assn (Pos (B),true)
 let v6 = Assn (Neg (C),false)
 
@@ -34,6 +34,9 @@ let is_assigned (v : var) : bool =
   | Unassn _ -> false
   | _ -> true
 
+let _ = assert ((is_assigned v1) = true);;
+let _ = assert ((is_assigned v2) = false);;
+
 (* Returns value of variable, or None if unassigned *)
 let get_value (v : var) : bool option =
   match v with
@@ -41,11 +44,17 @@ let get_value (v : var) : bool option =
   | Assn (_,false) -> Some false
   | Unassn _ -> None
     
+let _ =  assert ((get_value v1) = Some true);;
+let _ =  assert ((get_value v2) = None);;
+
 (* Assigns boolean value to variable*)
 let assign_var (b : bool) (v : var) : var =
   match v with
   | Unassn x -> Assn (x,b)
   | _ -> v
+
+let _ = assert ((assign_var false v1) = Assn (Pos A,true));;
+let _ = assert ((assign_var false v2) = Assn (Pos B,false));;
 
 (* If any variable is assigned to be true, clause is satisfied *)
 let rec clause_sat (c : clause) : bool =
@@ -56,18 +65,30 @@ let rec clause_sat (c : clause) : bool =
     | Assn (_,true) -> true
     | _ -> clause_sat t)
 
+let _ = assert ((clause_sat EmptyC) = false);;
+let _ = assert ((clause_sat c1) = true);;
+let _ = assert ((clause_sat c2) = true);;
+let _ = assert ((clause_sat c4) = false);;
+
 (* Tests whether clause is unit clause *)
 let rec is_unit (c : clause) : bool =
-  let rec rest_assigned cl =
+  let rec rest_assigned_false cl =
     match cl with
     | EmptyC -> true
-    | Disj (Assn (_,_),t) -> rest_assigned t
-    | Disj (Unassn (_),_) -> false in
+    | Disj (Assn (_,false),t) -> rest_assigned_false t
+    | Disj (Unassn (_),_) | Disj (Assn (_,true),_) -> false in
   match c with
   | EmptyC -> false
   | Disj (Unassn (_),EmptyC) -> true
-  | Disj (Unassn (_),t) -> rest_assigned t
+  | Disj (Unassn (_),t) -> rest_assigned_false t
+  | Disj (Assn (_,true),_) -> false
   | Disj (Assn (_,_),t) -> is_unit t
+
+let _ = assert ((is_unit EmptyC) = false);;
+let _ = assert ((is_unit c1) = false);;
+let _ = assert ((is_unit c2) = false);;
+let _ = assert ((is_unit c3) = false);;
+let _ = assert ((is_unit c4) = true);;
 
 let resolve (c1: clause) (c2 : clause) : clause =
   c1
@@ -89,10 +110,10 @@ let elim_mult_vars (c : clause) : clause =
     match cl_init with
     | EmptyC -> cl_result
     | Disj (Assn (x,b),tl)  -> 
-      if List.mem x var_list then check_vars tl cl_result var_list
+      if List.mem x var_list  then check_vars tl cl_result var_list
       else check_vars tl (Disj (Assn (x,b),cl_result)) (x::var_list)
     | Disj (Unassn x,tl) -> 
-      if List.mem x var_list then check_vars tl cl_result var_list
+      if List.mem x var_list  then check_vars tl cl_result var_list
       else check_vars tl (Disj (Unassn x,cl_result)) (x::var_list) in
   check_vars c EmptyC [] 
 
