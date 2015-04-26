@@ -1,3 +1,5 @@
+open Core.Std
+
 (* Limiting variables for testing*)
 type var_literal = | A
 		   | B
@@ -26,6 +28,7 @@ let c1 = Disj (v1,EmptyC)
 let c2 = Disj (v1,Disj (v2,EmptyC))
 let c3 = Disj (v3,c2)
 let c4 = Disj (v3,Disj (v4,EmptyC))
+let c5 = Disj (v2,Disj (v3,EmptyC)) (* tautology *)
 
 (* Checks whether variable has been assigned --- may not
  * be necessary --- can return option in get_value *)
@@ -100,8 +103,12 @@ let unit_rule (c : clause) : clause =
  * if clause is single, then that variable can only have one setting.*)
 let is_single (c : clause) : bool =
   match c with
-  | Disj (v,EmptyC) -> true
+  | Disj (_,EmptyC) -> true
   | _ -> false
+
+let _ = assert ((is_single c1) = true);;
+let _ = assert ((is_single c2) = false);;
+let _ = assert ((is_single EmptyC) = false);;
 
 (* Simplifies clauses by eliminating mutiple instances
  * of the same variable *)
@@ -110,15 +117,25 @@ let elim_mult_vars (c : clause) : clause =
     match cl_init with
     | EmptyC -> cl_result
     | Disj (Assn (x,b),tl)  -> 
-      if List.mem x var_list  then check_vars tl cl_result var_list
+      if List.mem var_list x then check_vars tl cl_result var_list
       else check_vars tl (Disj (Assn (x,b),cl_result)) (x::var_list)
     | Disj (Unassn x,tl) -> 
-      if List.mem x var_list  then check_vars tl cl_result var_list
+      if List.mem var_list x then check_vars tl cl_result var_list
       else check_vars tl (Disj (Unassn x,cl_result)) (x::var_list) in
   check_vars c EmptyC [] 
 
+let mult_test1 = Disj (v1,Disj(v1,EmptyC));;
+let mult_test2 = Disj (v1,Disj(v2,Disj (v1,EmptyC)));;
+let mult_test3 = Disj (v1,Disj(v2,Disj (v2,EmptyC)));;
+
+(* NOTE: elim_mult_vars correctly removes repeated variables but
+ * reverses clause order *)
+let _ = assert ((elim_mult_vars mult_test1) = Disj (v1,EmptyC));;
+let _ = assert ((elim_mult_vars mult_test2) = Disj (v2,Disj (v1,EmptyC)));;
+let _ = assert ((elim_mult_vars mult_test3) = Disj (v2,Disj (v1,EmptyC)));;
+
 (* Eliminates clauses containing tautologies NEEDS TO BE FIXED*)
-let rec elim_taut (c : clause) : bool = 
+(*let rec elim_taut (c : clause) : bool = 
   let rec elim_neg v cl =
     match cl with
     | EmptyC -> false
@@ -133,7 +150,40 @@ let rec elim_taut (c : clause) : bool =
   | EmptyC -> false
   | Disj (Assn (Pos x,_),tl) -> elim_neg x tl
   | Disj (Assn (Neg x,_),tl) -> elim_pos x tl
-  | Disj (Unassn x,tl) -> elim_taut tl
+  | Disj (Unassn (Pos x),tl) -> elim_neg x tl
+  | Disj (Unassn (Neg x),tl) -> elim_pos x tl
+*)
+
+(* NOT WORKING*)
+let elim_taut (c : clause) : clause =
+  let rec elim_neg v cl =
+    match cl with
+    | EmptyC -> cl
+    | Disj (Assn (Pos v,_),t) | Disj (Unassn (Pos v),t) -> elim_neg v t
+    | Disj (h,t) -> Disj (h,(elim_neg v t)) in
+  let rec elim_pos v cl =
+    match cl with
+    | EmptyC -> cl
+    | Disj (Assn (Neg v,_),t) | Disj (Unassn (Neg v),t) -> elim_pos v t
+    | Disj (h,t) -> Disj (h,(elim_pos v t)) in
+  let rec elim (init : clause) (result : clause) : clause =
+    match init with
+    | EmptyC -> result
+    | Disj ((Assn (Pos x,_)) as hd,tl) ->
+      elim (elim_neg x tl) (Disj (hd, result))
+    | Disj ((Unassn (Pos x)) as hd,tl) ->
+      elim (elim_neg x tl) (Disj (hd, result))
+    | Disj ((Assn (Neg x,_)) as hd,tl) ->
+      elim (elim_pos x tl) (Disj (hd, result))
+    | Disj ((Unassn (Neg x)) as hd,tl) ->
+      elim (elim_pos x tl) (Disj (hd, result)) in
+  elim c EmptyC
+
+
+let _ = assert ((elim_taut c1) = c1);;
+let _ = assert ((elim_taut c2) = c2);;
+let _ = assert ((elim_taut c5) = EmptyC);;
+let _ = assert ((elim_taut EmptyC) = EmptyC);;
  
 (* Creates empty formula---May not be necessary*)
 let empty () :  formula =
@@ -156,7 +206,7 @@ let rec has_empty (f : formula) : bool =
 
 (* Simplifies formula by eliminating tautologies and multiple
  * variables within same clause *)
-let prelim_process (f : formula) : formula =
+(*let prelim_process (f : formula) : formula =
   let rec rebuild_form init result =
     match init with
     | EmptyF -> result
@@ -164,7 +214,7 @@ let prelim_process (f : formula) : formula =
       if elim_taut h then rebuild_form t result
       else rebuild_form t (Conj (elim_mult_vars h,result))  in
   rebuild_form f EmptyF
-
+  *)
 let list_vars (f : formula) : var_name list =
   let rec list_clause_vars c acc =
     match c with
