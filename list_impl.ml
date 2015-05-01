@@ -31,6 +31,11 @@ let c4 : clause = [v3;v4]
 (* tautologies *)
 let c5 : clause = [v2;v3] 
 let c6 : clause = [v2;v4;v1;v6;v5]
+let c7 : clause = [v2]
+
+let f1 = [c1];;
+let f2 = [c7];; (* pure literal*)
+let f3 = [c1;c7;[v6]];;(*pure literal*)
 
 (* Helper to extract var_name from var *)
 let get_var_name (v : var) : var_name =
@@ -190,20 +195,6 @@ let _ = assert ((has_empty [c1;c2;[]]) = true);;
 let _ = assert ((has_empty [c1;c2]) = false);;
 
 
-(* Simplifies formula by eliminating tautologies and multiple
- * variables within same clause *)
-let prelim_process (f : formula) : formula =
-  let rec rebuild_formula init result =
-    match init with
-    | [] -> result
-    | h :: t -> 
-      if elim_taut h then rebuild_formula t result
-      else rebuild_formula t ((elim_mult_vars h) :: result)  in
-  rebuild_formula f []
-  
-let _ = assert ((prelim_process []) = []);;
-let _ = assert ((prelim_process [c6;[v1;v2;v1]]) = [[v1;v2]]);;
-let _ = assert ((prelim_process [c5;c6]) = []);;
 
 (* Generates list of all variables in formula *)
 let list_vars (f : formula) : var_name list =
@@ -223,6 +214,54 @@ let _ = assert ((list_vars [c1]) = [Pos A]);;
 let _ = assert ((list_vars [c5]) = [Pos B;Neg B]);;
 let _ = assert ((list_vars [c5;c1]) = [Pos B;Neg B;Pos A]);;
 let _ = assert ((list_vars [c5;c1;c5;[]]) = [Pos B;Neg B;Pos A;Pos B;Neg B]);;
+
+
+  
+(* If "x" appears in the formula but "not x" does not, the process
+ * must map x to true, and false if vice versa; returns new formula
+ * with unassigned variables assigned if applicable under this rule *)
+let pure_literal (f : formula) : formula =
+  let v_list = list_vars f in
+  let rec is_pure (l : var_name list) (v : var_name) : bool =
+    match v with
+    | Pos x -> not (List.mem l (Neg x))
+    | Neg x -> not (List.mem l (Pos x)) in
+  let make_true (v : var) : var =
+    match v with
+    | Unassn v -> Assn (v,true)
+    | _ -> v in
+  let rec pure_in_clause (cl : clause) : clause =
+    List.map cl
+      ~f:(fun x -> if is_pure v_list (get_var_name x) then make_true x else x) in
+  let rec assign_literals init acc =
+    match init with
+    | [] -> List.rev acc
+    | hd :: tl -> 
+      assign_literals tl ((pure_in_clause hd) :: acc) in
+  assign_literals f []
+
+let _ = assert ((pure_literal f1) = f1);;
+let _ = assert ((pure_literal f2) = [[Assn (Pos B,true)]]);;
+let _ = assert ((pure_literal f3) = [c1;[Assn (Pos B,true)];[v6]]);;
+let _ = assert ((pure_literal []) = []);;
+
+
+
+(* Simplifies formula by eliminating tautologies and multiple
+ * variables within same clause, and then giving assignments through 
+ * the pure literal rule *)
+let prelim_process (f : formula) : formula =
+  let rec rebuild_formula init result =
+    match init with
+    | [] -> pure_literal result
+    | h :: t -> 
+      if elim_taut h then rebuild_formula t result
+      else rebuild_formula t ((elim_mult_vars h) :: result)  in
+  rebuild_formula f []
+  
+let _ = assert ((prelim_process []) = []);;
+let _ = assert ((prelim_process [c6;[v1;v2;v1]]) = [[v1;Assn (Pos B,true)]]);;
+let _ = assert ((prelim_process [c5;c6]) = []);;
 
 let apply_unit (f : formula) : formula =
   f
