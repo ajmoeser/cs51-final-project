@@ -14,40 +14,55 @@ open List_impl
 exception UNSATISFIABLE
 
 
-   
-(* core recursive function to determine whether a formula is satisfiable
- * given a particular mapping of variables *)
-let rec sat_search (f : formula) (m : var_map) : var_map =
-  (* preliminary step to simplify formula and
-   * apply pure literal rule *)
-  let f' = prelim_process f in
-  let (f_new,map_new) = unit_propagate f' m' in
-    match f_new with
-    (* If, after propagation, the formula is empty, the assignments
-     * in the current var_map satisfy the formula *)
-    | EmptyF -> map_new
-    | _ ->
-      (* If under any assignment, a formula contains any empty clauses, 
-       * the formula is unsatisfiable *)
-      if has_empty f_new then raise UNSATISFIABLE
-      (*otherwise, add a new variable to the mapping, and repeat*)
-      else sat_search f_new (add_next_variable f_new map_new)
 
+
+(* core recursive function to determine whether a formula is satisfiable
+ * given a particular set of variable assignments *)
+let rec sat_search (f : formula) (vl : var list)  =
+  let f' = prelim_process f in
+  if formula_sat f' then vl
+  else if has_empty f' then raise UNSATISFIABLE
+  else let new_f = apply_unit f' in
+   sat_search new_f (add_next_variable vl)
 ;;
 
-(* To be implemented : the actual unit propagation function, which will
- * apply the unit rule to the formula, dropping satisfied clauses and
- * updating the var_map with assignments dictated by the unit rule
 
-let rec unit_propagate (f : formula) (p : var_map) : formula * var_map =
-  TODO *)
+(* Some example formulas. Note that unsatisfiable formulas
+ * are commented out so that the program can run*)
 
+let var1 = Unassn (Pos A)
+let var2 = Unassn (Neg A)
+let var3 = Unassn (Pos B)
+let var4 = Unassn (Neg B)
+let var5 = Unassn (Pos C)
+let var6 = Unassn (Neg C)
+let var7 = Unassn (Pos D)
+let var8 = Unassn (Neg D)
+let var9 = Unassn (Pos E)
+let var10 = Unassn (Neg E)
 
+let form1 : formula = [];;
+let form2 = [[var1;var2]];;
+let form3 = [[var1;var3];[var2;var3]];;
+let form4 = [[var2];[var1]];;
+let form5 = [[var2];[var3];[var5];[var8]];;
+let form6 = [[var5;var6];[var7;var8];[var9;var10]];; 
 
-(* To be implemented : function to add one more variable mapping
- * to the var_map when sat_search is called recursively.
+(*Empty formula is automatically satisfiable*)
+let _ = assert ((sat_search form1 (initial_vars (list_vars form1))) = initial_vars (list_vars form1));;
+(*
+(* (A or Not A) *)
+let _ = assert ((sat_search form2 (initial_vars (list_vars form2))) = initial_vars (list_vars form1));;
 
-let add_next_variable (f : formula) (p : var_map) : var_map =
-  TODO
+(* (A or B) and (Not A or B)*)
+let _ = assert ((sat_search form3 (initial_vars (list_vars form3))) = initial_vars (list_vars form3));;
 
-*)  
+(* (Not A) and (A)*)
+(*let _ = assert ((sat_search form4 (initial_vars (list_vars form4))) = UNSATISFIABLE);;*)
+
+(* testing a series of non-conflicting pure literals*)
+let _ = assert ((sat_search form5 (initial_vars (list_vars form5))) = initial_vars (list_vars form3));;
+
+(* testing a series of tautologies : returns all variables unassigned*)
+let _ = assert ((sat_search form6 (initial_vars (list_vars form6))) = initial_vars (list_vars form6));;
+*)
