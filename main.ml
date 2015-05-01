@@ -1,11 +1,13 @@
 (* Alexander Moeser
- * CS51 Final Project
+ * CS51 Final Project : DPLL SAT-Solver
  * 
  * This file contains the main algorithm for a SAT-solver using the
  * Davis-Putnam-Logemann-Loveland ("DPLL") algorithm.  Other associated
  * files contain interfaces and implementations for variables, clauses,
  * and formulas.  See README.md for details.
+ *
 *)
+
 open Core.Std
 
 exception UNSATISFIABLE
