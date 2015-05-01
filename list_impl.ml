@@ -28,10 +28,15 @@ let c1 : clause = [v1]
 let c2 : clause = [v1;v2]
 let c3 : clause = [v3;v2;v1]
 let c4 : clause = [v3;v4]
+
 (* tautologies *)
 let c5 : clause = [v2;v3] 
 let c6 : clause = [v2;v4;v1;v6;v5]
+
 let c7 : clause = [v2]
+let c8 : clause = [v1;v2;v4;v6;v4] (*not unit*)
+let c9 : clause = [v2;v4;v6;v4] (*unit*)
+
 
 let f1 = [c1];;
 let f2 = [c7];; (* pure literal; also for assign_single*)
@@ -42,6 +47,13 @@ let f4 = [c3;c6;c1];;(*should not change under assign_single*)
 let get_var_name (v : var) : var_name =
   match v with
   | Assn (x,_) | Unassn x -> x
+
+(* helper function used to assign unassigned variables either through
+ * assign_singles,unit_rule or pure_literals *)
+let make_true (v : var) : var =
+    match v with
+    | Unassn v -> Assn (v,true)
+    | _ -> v
 
 (* Checks whether variable has been assigned --- may not
  * be necessary --- can return option in get_value *)
@@ -106,14 +118,29 @@ let _ = assert ((is_unit c1) = false);;
 let _ = assert ((is_unit c2) = false);;
 let _ = assert ((is_unit c3) = false);;
 let _ = assert ((is_unit c4) = true);;
+let _ = assert ((is_unit c8) = false);;
+let _ = assert ((is_unit c9) = true);;
 
 
 
 let resolve (c1: clause) (c2 : clause) : clause =
   c1
 
-let unit_rule (c : clause) : clause =
-  c
+
+(* In unit clause, changes unassigned variable to true 
+ * and returns updated clause*)
+let rec unit_rule (c : clause) : clause =
+  if is_unit c then
+    match c with
+    | [] -> []
+    | hd :: tl -> (make_true hd) :: (unit_rule tl)
+  else c
+
+let _ = assert ((unit_rule []) = []);;
+let _ = assert ((unit_rule c1) = c1);;
+let _ = assert ((unit_rule c8) = c8);;
+let _ = assert ((unit_rule c4) = [Assn (Neg B,true);v4]);;
+let _ = assert ((unit_rule c9) = [Assn (Pos B,true);v4;v6;v4]);;
 
 (* Tests whether clause is single variable; function used because
  * if clause is single, then that variable can only have one setting.*)
@@ -126,12 +153,7 @@ let _ = assert ((is_single c1) = true);;
 let _ = assert ((is_single c2) = false);;
 let _ = assert ((is_single []) = false);;
 
-(* helper function used to assign unassigned variables either through
- * assign_singles (next) or pure_literals (below) *)
-let make_true (v : var) : var =
-    match v with
-    | Unassn v -> Assn (v,true)
-    | _ -> v
+
 
 (* Called as part of prelim_process below; assigns previously unassigned
  * variables if they are in singleton clauses*)
@@ -157,7 +179,7 @@ let elim_mult_vars (c : clause) : clause =
   let rec check_vars cl_init cl_result var_list =
     match cl_init with
     | [] -> cl_result
-    | ((Assn (x,b)) as hd) :: tl ->
+    | ((Assn (x,_)) as hd) :: tl ->
       if List.mem var_list x then check_vars tl cl_result var_list
       else check_vars tl (hd :: cl_result) (x :: var_list)
     | ((Unassn x) as hd) :: tl ->
@@ -248,7 +270,7 @@ let _ = assert ((list_vars [c5;c1;c5;[]]) = [Pos B;Neg B;Pos A;Pos B;Neg B]);;
  * with unassigned variables assigned if applicable under this rule *)
 let pure_literal (f : formula) : formula =
   let v_list = list_vars f in
-  let rec is_pure (l : var_name list) (v : var_name) : bool =
+  let is_pure (l : var_name list) (v : var_name) : bool =
     match v with
     | Pos x -> not (List.mem l (Neg x))
     | Neg x -> not (List.mem l (Pos x)) in
@@ -256,7 +278,7 @@ let pure_literal (f : formula) : formula =
     match v with
     | Unassn v -> Assn (v,true)
     | _ -> v in*)
-  let rec pure_in_clause (cl : clause) : clause =
+  let pure_in_clause (cl : clause) : clause =
     List.map cl
       ~f:(fun x -> if is_pure v_list (get_var_name x) then make_true x else x) in
   let rec assign_literals init acc =
