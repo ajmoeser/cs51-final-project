@@ -17,12 +17,12 @@ type clause = var list
 type formula = clause list
 
 (* variables and clauses for testing in Utop: *)
-let v1 = Assn (Pos (A),true)
-let v2 = Unassn (Pos (B))
-let v3 = Unassn (Neg (B))
-let v4 = Assn (Neg (B),false)
-let v5 = Assn (Pos (B),true)
-let v6 = Assn (Neg (C),false)
+let v1 = Assn (Pos A,true)
+let v2 = Unassn (Pos B)
+let v3 = Unassn (Neg B)
+let v4 = Assn (Neg B,false)
+let v5 = Assn (Pos B,true)
+let v6 = Assn (Neg C,false)
 
 let c1 : clause = [v1]
 let c2 : clause = [v1;v2]
@@ -34,8 +34,9 @@ let c6 : clause = [v2;v4;v1;v6;v5]
 let c7 : clause = [v2]
 
 let f1 = [c1];;
-let f2 = [c7];; (* pure literal*)
-let f3 = [c1;c7;[v6]];;(*pure literal*)
+let f2 = [c7];; (* pure literal; also for assign_single*)
+let f3 = [c1;c7;[v6]];;(*pure literal; also for assign_single*)
+let f4 = [c3;c6;c1];;(*should not change under assign_single*)
 
 (* Helper to extract var_name from var *)
 let get_var_name (v : var) : var_name =
@@ -124,6 +125,31 @@ let is_single (c : clause) : bool =
 let _ = assert ((is_single c1) = true);;
 let _ = assert ((is_single c2) = false);;
 let _ = assert ((is_single []) = false);;
+
+(* helper function used to assign unassigned variables either through
+ * assign_singles (next) or pure_literals (below) *)
+let make_true (v : var) : var =
+    match v with
+    | Unassn v -> Assn (v,true)
+    | _ -> v
+
+(* Called as part of prelim_process below; assigns previously unassigned
+ * variables if they are in singleton clauses*)
+let assign_singles (f : formula) : formula =
+  let rec assign (init : formula) (acc : formula) : formula =
+    match init with
+    | [] -> List.rev acc
+    | hd :: tl -> 
+      (match hd with
+      | [Unassn x] -> assign tl ([Assn (x,true)] :: acc)
+      | _ -> assign tl (hd :: acc)) in
+  assign f []
+
+let _ = assert ((assign_singles []) = []);;
+let _ = assert ((assign_singles f1) = f1);;
+let _ = assert ((assign_singles f4) = f4);;
+let _ = assert ((assign_singles f2) = [[Assn (Pos B,true)]]);;
+let _ = assert ((assign_singles f3) = [c1;[Assn (Pos B,true)];[v6]]);;
 
 (* Simplifies clauses by eliminating mutiple instances
  * of the same variable *)
@@ -226,10 +252,10 @@ let pure_literal (f : formula) : formula =
     match v with
     | Pos x -> not (List.mem l (Neg x))
     | Neg x -> not (List.mem l (Pos x)) in
-  let make_true (v : var) : var =
+(*  let make_true (v : var) : var =
     match v with
     | Unassn v -> Assn (v,true)
-    | _ -> v in
+    | _ -> v in*)
   let rec pure_in_clause (cl : clause) : clause =
     List.map cl
       ~f:(fun x -> if is_pure v_list (get_var_name x) then make_true x else x) in
@@ -249,11 +275,11 @@ let _ = assert ((pure_literal []) = []);;
 
 (* Simplifies formula by eliminating tautologies and multiple
  * variables within same clause, and then giving assignments through 
- * the pure literal rule *)
+ * the pure literal rule  and singleton clause rule*)
 let prelim_process (f : formula) : formula =
   let rec rebuild_formula init result =
     match init with
-    | [] -> pure_literal result
+    | [] -> assign_singles (pure_literal result)
     | h :: t -> 
       if elim_taut h then rebuild_formula t result
       else rebuild_formula t ((elim_mult_vars h) :: result)  in

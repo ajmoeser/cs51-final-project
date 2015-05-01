@@ -18,7 +18,7 @@ exception UNSATISFIABLE
 (* core recursive function to determine whether a formula is satisfiable
  * given a particular mapping of variables *)
 let rec sat_search (f : formula) (m : var_map) : var_map =
-  (* Two preliminary steps to simplify formula and
+  (* preliminary step to simplify formula and
    * apply pure literal rule *)
   let f' = prelim_process f in
   let (f_new,map_new) = unit_propagate f' m' in
